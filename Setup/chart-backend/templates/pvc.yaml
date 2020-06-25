@@ -1,0 +1,25 @@
+{{- range $deploy :=  $.Values.deploys }}
+{{- if .persistence }}
+{{- range .persistence }}
+{{- if .newpv }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ printf "%s-%s-%s" (include "devops.fullname" $) $deploy.name .name }}
+  {{- if eq .resourcePolicy "keep" }}
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
+spec:
+  accessModes:
+    - {{ .accessModes | default "ReadWriteMany" }}
+  storageClassName: {{ .storageClassName }}
+  volumeName: {{ printf "%s-%s-%s" (include "devops.fullname" $) $deploy.name .name }}
+  resources:
+    requests:
+      storage: {{ .storage | default "10Gi" }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

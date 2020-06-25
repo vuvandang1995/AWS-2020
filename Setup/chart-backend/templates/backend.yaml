@@ -1,0 +1,160 @@
+{{- range $deploy :=  $.Values.deploys }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ printf "%s-%s" (include "devops.fullname" $) $deploy.name }}
+  labels:
+    app.kubernetes.io/instance: {{ printf "%s-%s" (include "devops.name" $) $deploy.name }}
+    {{- include "devops.labels" $ | nindent 4 }}
+spec:
+  replicas: {{ $deploy.replicasCount | default 0 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "devops.name" $ }}
+      app.kubernetes.io/instance: {{ printf "%s-%s" (include "devops.name" $) $deploy.name }}
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: {{ $deploy.istioEnabled | default false | quote }}
+        {{- with $deploy.service }}
+        prometheus.io/scrape: {{ $deploy.prometheusScrapeEnabled | default true | quote }}
+        {{- end }}
+        {{- if $.Values.configMap }}
+        checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") $ | sha256sum }}
+        {{- end }}
+        {{- if $.Values.secret }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.sealed.yaml") $ | sha256sum }}
+        {{- end }}
+      labels:
+        app.kubernetes.io/name: {{ include "devops.name" $ }}
+        app.kubernetes.io/instance: {{ include "devops.name" $ }}-{{ $deploy.name }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ include "devops.name" $ }}-{{ $deploy.name }}
+          image: {{ printf "%s:%s" $.Values.image.repository $.Values.image.tag | quote }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          {{- include "devops.env" (mergeOverwrite dict $.Values.env ($deploy.env | default dict)) | nindent 10 }}
+          {{- include "devops.cmd" $deploy | nindent 10 }}
+          {{- with $deploy.service }}
+          ports:
+            {{- range $key, $value := .containerPort }}
+            - name: {{ $key }}
+              containerPort: {{ $value }}
+              protocol: TCP
+            {{- end }}
+            {{- with .health }}
+            {{- with .livenessPort }}
+            - name: liveness
+              containerPort: {{ . }}
+            {{- end }}
+            {{- with .readinessPort }}
+            - name: readiness
+              containerPort: {{ . }}
+            {{- end }}
+            {{- end }}
+          livenessProbe:
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 5 
+            httpGet:
+              path: {{ (.health | default dict).live | default "/health" }} 
+              port: {{ (.health | default dict).livenessPort | default "http" }}
+          readinessProbe:
+            httpGet:
+              path: {{ (.health | default dict).ready | default "/health" }} 
+              port: {{ (.health | default dict).readinessPort | default "http" }}
+          {{- end }}
+          {{- include "devops.resources" ($deploy.resources | default ($.Values.resources | default dict)) | nindent 10 }}
+          {{- if or .mountConfigMaps .mountSecrets .persistence }}
+          volumeMounts:
+          {{- range .mountConfigMaps }}
+          - name: config-{{ .name }}-volume
+            mountPath: {{ .mountPath }}
+          {{- end }}
+          {{- range .mountSecrets }}
+          - name: secret-{{ .name }}-volume
+            mountPath: {{ .mountPath }}
+          {{- end }}
+          {{- range .persistence }}
+          - name: {{ printf "%s-%s-%s" (include "devops.fullname" $) $deploy.name .name }}
+            mountPath: {{ .mountPath }}
+            {{- if .subPath }}
+            subPath: {{ .subPath }}
+            {{- end }}
+          {{- end }}
+          {{- end }}
+      {{- if or .mountConfigMaps .mountSecrets .persistence }}
+      volumes:
+      {{- range .mountConfigMaps }}
+      - name: config-{{ .name }}-volume
+        configMap:
+          name: {{ .name }} 
+      {{- end }}
+      {{- range .mountSecrets }}
+      - name: secret-{{ .name }}-volume
+        secret:
+          secretName: {{ .name }} 
+      {{- end }}
+      {{- range .persistence }}
+      - name: {{ printf "%s-%s-%s" (include "devops.fullname" $) $deploy.name .name }}
+        persistentVolumeClaim:
+          claimName: {{ .claimName | default (printf "%s-%s-%s" (include "devops.fullname" $) $deploy.name .name) }}
+      {{- end }}
+      {{ end }}
+
+      {{- with $deploy.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $deploy.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $deploy.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- with $deploy.service }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name | default (printf "%s-%s" (include "devops.fullname" $) $deploy.name) }}
+  labels:
+    app.kubernetes.io/instance: {{ printf "%s-%s" (include "devops.name" $) $deploy.name }}
+    {{- include "devops.labels" $ | nindent 4 }}
+spec:
+  type: {{ .type }}
+  ports:
+    {{- range $key, $value := .containerPort }}
+    - port: {{ $value }}
+      targetPort: {{ $key }}
+      protocol: TCP
+      name: {{ $key }}
+    {{- end }}
+  selector:
+    app.kubernetes.io/name: {{ include "devops.name" $ }}
+    app.kubernetes.io/instance: {{ printf "%s-%s" (include "devops.name" $) $deploy.name }}
+{{- end }}
+{{- with $deploy.autoScale }}
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ printf "%s-%s" (include "devops.fullname" $) $deploy.name }}
+spec:
+  maxReplicas: {{ .max }}
+  minReplicas: {{ .min | default 2 }}
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: {{ printf "%s-%s" (include "devops.fullname" $) $deploy.name }}
+  targetCPUUtilizationPercentage: {{ .cpu | default 60}}
+{{- end }}
+{{- end }}

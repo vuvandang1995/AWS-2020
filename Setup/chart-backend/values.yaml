@@ -1,0 +1,102 @@
+# imagePullSecrets:
+# - name: hub.devopsnd95.cf
+# image:
+#   repository: hub.devopsnd95.cf/mticket/api
+#   tag: m-0abd907c
+
+
+# deploys:
+# - name: app
+#   prometheusScrapeEnabled: 'false'
+#   replicasCount: 2
+#   command:
+#   - gunicorn
+#   - main:app
+#   - -k
+#   - gevent
+#   - -c
+#   - etc/gunicorn.conf.py
+#   service:
+#     type: ClusterIP
+#     containerPort: 5000
+#     health:
+#       live: /healthcheck
+#       ready: /healthcheck
+#   resources:
+#     requests:
+#       memory: 768Mi
+#       cpu: 25m
+#     limits:
+#       memory: 2Gi
+#       cpu: 300m
+
+# - name: worker
+#   replicasCount: 4
+#   args:
+#   - celery
+#   - worker
+#   - -A
+#   - mticket.celery
+#   - -l
+#   - info
+#   - -P
+#   - gevent
+#   resources:
+#     requests:
+#       memory: 256Mi
+#       cpu: 25m
+#     limits:
+#       memory: 1Gi
+#       cpu: 300m
+
+# - name: beat
+#   replicasCount: 1
+#   args:
+#   - celery
+#   - beat
+#   - -A
+#   - ticket.celery
+#   - -l
+#   - info
+#   - --pidfile=
+#   resources:
+#     requests:
+#       memory: 128Mi
+#       cpu: 25m
+#     limits:
+#       memory: 348Mi
+#       cpu: 150m
+
+
+# ingress:
+#   enabled: true
+#   annotations:
+#     certmanager.k8s.io/cluster-issuer: letsencrypt
+#     kubernetes.io/ingress.class: nginx
+#     kubernetes.io/tls-acme: 'true'
+#     nginx.ingress.kubernetes.io/ssl-redirect: 'false'
+#     nginx.ingress.kubernetes.io/enable-cors: 'true'
+#     nginx.ingress.kubernetes.io/cors-allow-methods: GET, PUT, POST, DELETE, PATCH,
+#       OPTIONS
+#     nginx.ingress.kubernetes.io/cors-allow-origin: '*'
+#   tls:
+#   - secretName: mticket-api-tls
+#     hosts:
+#     - mticket.develop.devopsapis.cf
+#   rules:
+#   - host: mticket.develop.devopsapis.cf
+#     paths:
+#     - path: /api
+#       serviceName: mticket-api-app
+#     - path: /swaggerui
+#       serviceName: mticket-api-app
+# env:
+#   # MYSQL
+#   DATABASE_URI: secret:mticket-api.database_uri
+
+#   # CELERY
+#   CELERY_BROKER_URL: redis://mticket-redis-master:6379
+#   CELERY_RESULT_BACKEND: redis://mticket-redis-master:6379
+
+# secret:
+#   database_uri: AgBS+qvvIiKcNsh2UEwUGt7MVI85Vo6ZxAoK0wglmlG+kiJg9qPWgVtZcCTHQInqp3sxXfnY7WUzFf4Wozrd4vGiIsAxyt3j8F6b6jhdyEmqtM5geFtTkFGXviuT/REPvoHKMBp/vEUdJvSW6oMff2O/ofMhbNSAZN5khX28JTyxmEFgaXhGDrImyaDD+UBtvV8JSSiIZSMGRdTSftO3L+VlQihMFbG1bUZAFbC1dLEiMTVit3P8pvyxAJL1Wby6KPoj0NnlXT1OwY9dWgSMDkSSMz8449CjK1/efMj45092DbtBVyH4504W9y1w30JX+ltBIFEeKtMnyXTsNXeVum4ER+1Tb+ocf/98tGtmPZRLz19YM6WbYaeNRxTUGtmLfWAGDe3zNZm2pvY10+K+OuGllovZ9oqOe9PfDCTSd6nE2aqRCKbbe7OkUDQQYEXRzsWRk92nM4jflqQbltfoxm0Fol+wlcf0MIB+oiaZbkG/NvbR0edUQdUbGGwDCuhGb+igM6B3NpbJZqFYm/FIIKca5mvBh5s7IJbZYWB7hRzHAqbz+e7kWOp97QFGyXy+EFIKnuLHPsx7CJ1nU6034x4iMGN/ucqwKy/dUCYk24vKBBTFOiMAWzIJ8/18uBGLAUM6snurvOLbFWsKW5vSkLul1tWoW0KZN8QsYTRM6s6iyKITm+oMAM1nJSRtFhdcROFGyICp3SNmL7OByzS2Mm/BYExtPBNUSL22mYRFWDFRHojSWf9mX2WkNHxag3vFHpWf5bc5Vr8TRDifddomMqXaKtAAbTTs/xYWcqc=

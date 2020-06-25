@@ -1,0 +1,14 @@
+## Sử dụng tool-seal để mã hóa dữ liệu client
+- B1: Truy cập : `https://encrypt-data.dangvv.vn`
+- B2: Nhập các thông số
+    - `Cluster` là tên cluster muốn dùng
+    - `Namespace` là namespace chứa secret. ví dụ `authen-service`
+    - `Secret Type` để là Opaque
+    - `Secret Name` là tên của helm release, ví dụ `authen-api`
+    - `Secret Data` là các thông số nhạy cảm cần mã hóa. Key (tự đặt, ví dụ : GOOGLE_API_KEY), Value là giá trị raw của Key, các thông số khác tương tự
+    - `File Input` là upload các file cần mã hóa lên (nhiều file)
+- B3: Bấm `Submit` và lấy kết quả
+- B4: Copy toàn bộ kết quả trong ô `Output` vào file config deployment (ví dụ `authen-api.yaml`) ở phần secret
+- B5: Sửa lại env trong file config deployment (ví dụ `authen-api.yaml`) theo cú pháp
+    - Ví dụ: `secret:authen-api.GOOGLE_API_KEY`
+- B6: Commit code

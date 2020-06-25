@@ -1,0 +1,32 @@
+{{- range $deploy :=  $.Values.deploys }}
+{{- if .persistence }}
+{{- range .persistence }}
+{{- if .newpv }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ printf "%s-%s-%s" (include "devops.fullname" $) $deploy.name .name }}
+  {{- if eq .resourcePolicy "keep" }}
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
+spec:
+  capacity:
+    storage: {{ .storage | default "10Gi" }}
+  volumeMode: {{ .volumeMode | default "Filesystem" }}
+  accessModes:
+    - {{ .accessModes | default "ReadWriteMany" }}
+  persistentVolumeReclaimPolicy: {{ .persistentVolumeReclaimPolicy | default "Retain" }}
+  storageClassName: {{ .storageClassName | default "" }}
+  {{- if .csi }}
+  csi:
+    driver: {{ .csi.driver | default "efs.csi.aws.com" }}
+    volumeHandle: {{ .csi.volumeHandle }}
+    volumeAttributes:
+      path: {{ .csi.volumeAttributes.path }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

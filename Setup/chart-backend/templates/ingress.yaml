@@ -1,0 +1,30 @@
+{{- if ($.Values.ingress | default dict).enabled }}
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: {{ printf "%s" (include "devops.fullname" $) }}
+  labels:
+    {{- include "devops.labels" $ | nindent 4 }}
+  annotations: {{- ($.Values.ingress.annotations | default dict) | toYaml | nindent 4 }}
+spec:
+  {{- with $.Values.ingress.tls }}
+  tls:
+    {{- range $.Values.ingress.tls }}
+      - secretName: {{ .secretName }}
+        hosts: {{ .hosts | toYaml | nindent 8 }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range $.Values.ingress.rules }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            backend:
+              serviceName: {{ .serviceName }}
+              servicePort: {{ .servicePort | default "http" }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+

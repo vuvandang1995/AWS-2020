@@ -1,0 +1,9 @@
+{{- with $.Values.configMap -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s" (include "devops.fullname" $) }}
+  namespace: {{ $.Release.Namespace }}
+data:
+  {{ . | toYaml | nindent 2 }}
+{{- end }}

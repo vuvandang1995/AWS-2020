@@ -1,0 +1,29 @@
+{{- range $job :=  $.Values.jobs }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-%s-%s" (include "devops.fullname" $) $job.name (($.Values | toJson) | sha1sum | trunc 7) }}
+  labels:
+    app.kubernetes.io/instance: {{ printf "%s-%s" (include "devops.name" $) $job.name }}
+    {{- include "devops.labels" $ | nindent 4 }}
+spec:
+  # successfulJobsHistoryLimit: 1
+  # failedJobsHistoryLimit: 2
+  ttlSecondsAfterFinished: 900
+  template:
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ printf "%s-%s" (include "devops.name" $) $job.name }}
+        image: {{ printf "%s:%s" $.Values.image.repository $.Values.image.tag | quote }}
+        imagePullPolicy: {{ $.Values.image.pullPolicy }}
+        {{- include "devops.cmd" $job | nindent 8}}
+        {{- include "devops.env" (mergeOverwrite dict ($.Values.env | default dict) ($job.env | default dict)) | nindent 8 }}
+        {{- include "devops.resources" ($job.resources | default ($.Values.resources | default dict)) | nindent 8 }}
+      restartPolicy: Never
+  backoffLimit: {{ .backoffLimit | default 6 }}
+{{- end }}

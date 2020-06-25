@@ -1,0 +1,35 @@
+{{- range $cronjob := $.Values.cronJobs -}}
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-%s" (include "devops.fullname" $) $cronjob.name }}
+  labels:
+    app.kubernetes.io/instance: {{ printf "%s-%s" (include "devops.name" $) $cronjob.name }}
+    {{- include "devops.labels" $ | nindent 4 }}
+spec:
+  # successfulJobsHistoryLimit: 1
+  # failedJobsHistoryLimit: 2
+  startingDeadlineSeconds: 100
+  concurrencyPolicy: Forbid
+  schedule: {{ .schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          {{- with $.Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+          - name: {{ printf "%s-%s" (include "devops.name" $) $cronjob.name }}
+            image: {{ printf "%s:%s" $.Values.image.repository $.Values.image.tag | quote }}
+            imagePullPolicy: {{ $.Values.image.pullPolicy }}
+            {{- include "devops.cmd" $cronjob | nindent 12}}
+            {{- include "devops.env" (mergeOverwrite dict ($.Values.env | default dict) ($cronjob.env | default dict)) | nindent 12 }}
+            {{- include "devops.resources" ($cronjob.resources | default ($.Values.resources | default dict)) | nindent 12 }}
+          restartPolicy: OnFailure
+{{ end }}
