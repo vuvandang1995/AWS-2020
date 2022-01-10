@@ -10,7 +10,7 @@ jobs:
         uses: docker/login-action@v1.12.0
         with:
           # Username used to log against the Docker registry
-          username: vuvandang1995
+          username: dangvv1995
           # Password or personal access token used to log against the Docker registry
           password: dang15011995
           # Specifies whether the given registry is ECR (auto, true or false)
