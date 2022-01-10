@@ -12,7 +12,7 @@ jobs:
           # Username used to log against the Docker registry
           username: dangvv1995
           # Password or personal access token used to log against the Docker registry
-          password: dang15011995
+          password: ${{ secrets.DOCKER_HUB_PASS }}
           # Specifies whether the given registry is ECR (auto, true or false)
           ecr: false
           # Log out from the Docker registry at the end of a job
